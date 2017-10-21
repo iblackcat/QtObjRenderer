@@ -4,11 +4,14 @@
 #include <QGLShaderProgram>
 #include <QOpenGLTexture>
 #include <QOpenGLBuffer>
+#include <QOpenGLFramebufferObject>
 #include <QVector>
 #include <QTime>
 #include <QTimer>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QFileDialog>
+#include <QMessageBox>
 
 #include "MyArcball.h"
 #include "utils.h"
@@ -20,6 +23,12 @@ class MyGLWidget : public QGLWidget
 public:
 	MyGLWidget(QWidget *parent);
 	~MyGLWidget();
+
+public slots:
+	void chooseObj();
+	void chooseTexture();
+	void saveImage();
+	void saveImageAs();
 
 protected:
 	void initializeGL();
@@ -36,10 +45,13 @@ private:
 	void drawTriangle();
 	void setMatrix();
 	bool readObj(const char *path);
+	bool readTexture(const char *path);
+	void renderToTexture();
 
 	QGLShaderProgram program;
 	QOpenGLTexture *textureC;
 	QOpenGLBuffer m_indexBuf;
+	QOpenGLFramebufferObject *m_frameBuf;
 
 	mf::CameraPose pose;
 
@@ -57,6 +69,9 @@ private:
 	int mInvQHandle;
 	int mqHandle;
 	int mfaces;
+	int mframeid;
+
+	std::string savePath;
 	
 	QMatrix4x4 mModelMatrix;//ƒ£–Õæÿ’Û
 	QMatrix4x4 mViewMatrix; // ”Õºæÿ’Û  

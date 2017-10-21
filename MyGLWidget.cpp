@@ -10,6 +10,8 @@ MyGLWidget::MyGLWidget(QWidget *parent)
 	, m_indexBuf(QOpenGLBuffer::IndexBuffer)
 	, indices(nullptr)
 	, mfaces(0)
+	, mframeid(0)
+	, savePath("./")
 {
 	frames = 0;
 	setAttribute(Qt::WA_PaintOnScreen);
@@ -32,6 +34,9 @@ MyGLWidget::~MyGLWidget()
 		indices = nullptr;
 	}
 	m_indexBuf.destroy();
+
+	if (m_frameBuf)
+		delete m_frameBuf;
 }
 
 const char* MyGLWidget::ReadShaderFile(const char* filepath) {
@@ -61,11 +66,11 @@ bool MyGLWidget::readObj(const char *path) {
 		mfaces += objects[i].mesh.indices.size() / 3;
 	}
 
-	std::cout << "faces : " << mfaces << std::endl;
+	//std::cout << "faces : " << mfaces << std::endl;
 	if (indices) { free(indices); indices = nullptr; }
 	indices = (GLushort*)malloc(sizeof(GLushort) * mfaces * 3);
 
-
+	vertices.clear();
 	for (int i = 0; i < objects.size(); ++i) {
 		for (int j = 0; j < objects[i].mesh.positions.size(); j+=3) {
 			float x, y, z;
@@ -76,6 +81,7 @@ bool MyGLWidget::readObj(const char *path) {
 		}
 	}
 
+	vts.clear();
 	for (int i = 0; i < objects.size(); ++i) {
 		for (int j = 0; j < objects[i].mesh.texcoords.size(); j += 2) {
 			float x, y;
@@ -90,6 +96,107 @@ bool MyGLWidget::readObj(const char *path) {
 		for (int j = 0; j < objects[i].mesh.indices.size(); ++j) {
 			indices[index++] = objects[i].mesh.indices[j];
 		}
+	}
+
+	m_indexBuf.destroy();
+	m_indexBuf.create();
+	m_indexBuf.bind();
+	m_indexBuf.allocate(indices, sizeof(GLushort)*mfaces * 3);
+}
+
+bool MyGLWidget::readTexture(const char *path) {
+	if (textureC)
+		delete textureC;
+
+	//图像qt坐标系跟stbi一样的，放到opengl里面要垂直翻转
+	textureC = new QOpenGLTexture(QImage(path).mirrored());
+	textureC->setMinificationFilter(QOpenGLTexture::Linear);
+	textureC->setMagnificationFilter(QOpenGLTexture::Linear);
+	textureC->setWrapMode(QOpenGLTexture::Repeat);
+	return true;
+}
+
+void MyGLWidget::chooseObj() {
+	QString path = QFileDialog::getOpenFileName(this,
+		tr("Open File"),
+		".",
+		tr("Obj Files(*.obj)"));
+	if (!path.isEmpty()) {
+		readObj(path.toStdString().c_str());
+	}
+	else {
+		QMessageBox::warning(this, tr("Path"),
+			tr("You did not select any file."));
+	}
+}
+
+void MyGLWidget::chooseTexture() {
+	QString path = QFileDialog::getOpenFileName(this,
+		tr("Open File"),
+		".",
+		tr("Image Files(*.png)"));
+	if (!path.isEmpty()) {
+		readTexture(path.toStdString().c_str());
+	}
+	else {
+		QMessageBox::warning(this, tr("Path"),
+			tr("You did not select any file."));
+	}
+}
+
+void MyGLWidget::renderToTexture() {
+	glClearColor(0.f, 0.f, 0.f, 0.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	m_frameBuf->bind();
+	program.bind(); //glUseProgram  
+
+	program.setUniformValue("tex", 0);
+	textureC->bind();
+
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+	glDepthMask(GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	glClearDepth(1.0f);
+	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
+	glFrontFace(GL_CCW);
+
+	drawTriangle();
+
+	QImage fboImage(m_frameBuf->toImage());
+
+	char path[1024];
+	sprintf(path, "%s%02d.png", savePath.c_str(), mframeid++);
+	fboImage.save(path);
+
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+
+
+	program.release();//glUseProgram(0)  
+	m_frameBuf->release();
+}
+
+void MyGLWidget::saveImage() {
+	renderToTexture();
+}
+
+void MyGLWidget::saveImageAs() {
+	QString path = QFileDialog::getSaveFileName(this,
+		tr("Save File"),
+		savePath.c_str(),
+		tr("Image Files(*.png)"));
+	if (!path.isEmpty()) {
+		savePath = path.toStdString();
+		savePath = savePath.substr(0, savePath.size() - 4);
+		mframeid = 0;
+		renderToTexture();
+	}
+	else {
+		QMessageBox::warning(this, tr("Path"),
+			tr("You did not select any file."));
 	}
 }
 
@@ -111,11 +218,7 @@ void MyGLWidget::initializeGL() {
 	mPMatrixHandle = program.uniformLocation("proj");
 	mPositionHandle = program.attributeLocation("p");
 	mTexcoordHandle = program.attributeLocation("texCoord");
-	//mAxisHandle = program.attributeLocation("Axis");
-	//mInvQHandle = program.attributeLocation("Q");
-	//mqHandle = program.attributeLocation("q");
 
-	readObj("mesh/head.obj");
 	//CCW
 	/*
 	vertices << QVector3D(-1.0f,-1.0f, 0.0f)
@@ -132,17 +235,13 @@ void MyGLWidget::initializeGL() {
 		<< QVector2D(1.0f, 0.0f)
 		<< QVector2D(1.0f, 1.0f);
 	*/
-	//mViewMatrix.lookAt(QVector3D(0.0f, 0.0f, 3.f), QVector3D(0.0f, 0.0f, -5.0f), QVector3D(0.0f, 1.0f, 0.0f));
+	readObj("mesh/head.obj");
+	readTexture("mesh/head_tex.png");
 
-	//图像qt坐标系跟stbi一样的，放到opengl里面要垂直翻转
-	textureC = new QOpenGLTexture(QImage("mesh/head_tex.png").mirrored());
-	textureC->setMinificationFilter(QOpenGLTexture::Linear);
-	textureC->setMagnificationFilter(QOpenGLTexture::Linear);
-	textureC->setWrapMode(QOpenGLTexture::Repeat);
-
-	m_indexBuf.create();
-	m_indexBuf.bind();
-	m_indexBuf.allocate(indices, sizeof(GLushort)*mfaces*3);
+	QOpenGLFramebufferObjectFormat format;
+	format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
+	
+	m_frameBuf = new QOpenGLFramebufferObject(G.w, G.h, format);
 }
 
 void MyGLWidget::resizeGL(int w, int h) {
