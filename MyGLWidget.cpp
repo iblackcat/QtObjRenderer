@@ -329,10 +329,18 @@ void MyGLWidget::setMatrix() {
 	//pos = target + (pos - target)*m_arcball.mRadius;
 	*/
 	mViewMatrix.setToIdentity();
-	Eigen::Matrix3d poseR = Eigen::AngleAxisd(M_PI, Eigen::Vector3d(1.0, 0.0, 0.0).normalized()).toRotationMatrix();
+	//Eigen::Matrix3d poseR = Eigen::AngleAxisd(M_PI, Eigen::Vector3d(1.0, 0.0, 0.0).normalized()).toRotationMatrix();
+	Eigen::Matrix3d poseR = Eigen::AngleAxisd(M_PI, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()).toRotationMatrix();
 	//poseR = Eigen::Matrix3d::Identity();
 	Eigen::Vector3d poset = Eigen::Vector3d(m_arcball.translate_x / 10.0, -m_arcball.translate_y / 10.0, 5 + m_arcball.mRadius);
 	pose = mf::CameraPose(G.Intrinsic, poseR, poset);
+	/*
+	poseR = Eigen::AngleAxisd(0.3, Eigen::Vector3d(0.0, 1.0, 0.0).normalized()).toRotationMatrix();
+	poset = Eigen::Vector3d(0.0, 0.2, 0.0);
+	CameraPose p21(G.Intrinsic, poseR, poset);
+	Sophus::SE3d SE3 = p21.SE3_Rt * pose.SE3_Rt;
+	pose = CameraPose(G.Intrinsic, SE3);
+	*/
 	float *view = pose.getViewMatrix();
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {

@@ -110,6 +110,18 @@ public:
 		se3 = SE3_Rt.log();
 		center = -(R.inverse() * t);
 	}
+	CameraPose(Eigen::Matrix3d A, Sophus::SE3d _SE3) {
+		intrinsics = A;
+		SE3_Rt = _SE3;
+		se3 = SE3_Rt.log();
+
+		R = SE3_Rt.rotationMatrix();
+		t = SE3_Rt.translation();
+		Q = intrinsics * R;
+		q = intrinsics * t;
+
+		center = -(R.inverse() * t);
+	}
 	CameraPose(Eigen::Matrix3d A, Vector6d _se3) {
 		intrinsics = A;
 		se3 = _se3;
