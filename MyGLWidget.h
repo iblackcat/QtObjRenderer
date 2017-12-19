@@ -50,6 +50,7 @@ private:
 
 	QGLShaderProgram program;
 	QOpenGLTexture *textureC;
+	QOpenGLBuffer m_vertexBuf;
 	QOpenGLBuffer m_indexBuf;
 	QOpenGLFramebufferObject *m_frameBuf;
 
@@ -58,6 +59,7 @@ private:
 	QVector<QVector3D> vertices;
 	QVector<QVector2D> vts;
 	GLushort *indices = nullptr;
+	GLfloat *verts = nullptr;
 
 	//QVector<QVector3D> faces;
 	int mMMatrixHandle;
@@ -69,6 +71,7 @@ private:
 	int mInvQHandle;
 	int mqHandle;
 	int mfaces;
+	int mverts;
 	int mframeid;
 
 	std::string savePath;

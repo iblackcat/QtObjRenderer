@@ -62,14 +62,20 @@ bool MyGLWidget::readObj(const char *path) {
 	if (!ret) return false;
 
 	mfaces = 0;
+	mverts = 0;
 	for (int i = 0; i < objects.size(); ++i) {
 		mfaces += objects[i].mesh.indices.size() / 3;
+		mverts += objects[i].mesh.positions.size() / 3;
 	}
 
 	//std::cout << "faces : " << mfaces << std::endl;
 	if (indices) { free(indices); indices = nullptr; }
 	indices = (GLushort*)malloc(sizeof(GLushort) * mfaces * 3);
 
+	if (verts) { free(verts); verts = nullptr; }
+	verts = (GLfloat*)malloc(sizeof(GLfloat) * mverts * 3);
+
+	int index = 0;
 	vertices.clear();
 	for (int i = 0; i < objects.size(); ++i) {
 		for (int j = 0; j < objects[i].mesh.positions.size(); j+=3) {
@@ -78,6 +84,10 @@ bool MyGLWidget::readObj(const char *path) {
 			y = objects[i].mesh.positions[j + 1];
 			z = objects[i].mesh.positions[j + 2];
 			vertices << QVector3D(x, y, z);
+
+			verts[index++] = x;
+			verts[index++] = y;
+			verts[index++] = z;
 		}
 	}
 
@@ -91,7 +101,7 @@ bool MyGLWidget::readObj(const char *path) {
 		}
 	}
 
-	int index = 0;
+	index = 0;
 	for (int i = 0; i < objects.size(); ++i) {
 		for (int j = 0; j < objects[i].mesh.indices.size(); ++j) {
 			indices[index++] = objects[i].mesh.indices[j];
@@ -102,6 +112,12 @@ bool MyGLWidget::readObj(const char *path) {
 	m_indexBuf.create();
 	m_indexBuf.bind();
 	m_indexBuf.allocate(indices, sizeof(GLushort)*mfaces * 3);
+
+	m_vertexBuf.destroy();
+	m_vertexBuf.create();
+	m_vertexBuf.bind();
+	m_vertexBuf.allocate(verts, sizeof(GLfloat)*mverts * 3);
+	m_vertexBuf.release();
 }
 
 bool MyGLWidget::readTexture(const char *path) {
@@ -269,8 +285,12 @@ void printMatrix(QMatrix4x4 matrix) {
 }
 
 void MyGLWidget::drawTriangle() {
+	m_vertexBuf.bind();
 	program.enableAttributeArray(mPositionHandle);
-	program.setAttributeArray(mPositionHandle, vertices.constData());
+	//program.setAttributeArray(mPositionHandle, vertices.constData());
+	program.setAttributeBuffer(mPositionHandle, GL_FLOAT, 0, 3);
+	m_vertexBuf.release();
+
 	program.enableAttributeArray(mTexcoordHandle);
 	program.setAttributeArray(mTexcoordHandle, vts.constData());
 
@@ -329,8 +349,8 @@ void MyGLWidget::setMatrix() {
 	//pos = target + (pos - target)*m_arcball.mRadius;
 	*/
 	mViewMatrix.setToIdentity();
-	//Eigen::Matrix3d poseR = Eigen::AngleAxisd(M_PI, Eigen::Vector3d(1.0, 0.0, 0.0).normalized()).toRotationMatrix();
-	Eigen::Matrix3d poseR = Eigen::AngleAxisd(M_PI, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()).toRotationMatrix();
+	Eigen::Matrix3d poseR = Eigen::AngleAxisd(M_PI, Eigen::Vector3d(1.0, 0.0, 0.0).normalized()).toRotationMatrix();
+	//Eigen::Matrix3d poseR = Eigen::AngleAxisd(M_PI, Eigen::Vector3d(0.0, 0.0, 1.0).normalized()).toRotationMatrix();
 	//poseR = Eigen::Matrix3d::Identity();
 	Eigen::Vector3d poset = Eigen::Vector3d(m_arcball.translate_x / 10.0, -m_arcball.translate_y / 10.0, 5 + m_arcball.mRadius);
 	pose = mf::CameraPose(G.Intrinsic, poseR, poset);
