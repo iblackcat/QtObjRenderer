@@ -73,7 +73,7 @@ bool MyGLWidget::readObj(const char *path) {
 	indices = (GLushort*)malloc(sizeof(GLushort) * mfaces * 3);
 
 	if (verts) { free(verts); verts = nullptr; }
-	verts = (GLfloat*)malloc(sizeof(GLfloat) * mverts * 3);
+	verts = (GLfloat*)malloc(sizeof(GLfloat) * mverts * 5);
 
 	int index = 0;
 	vertices.clear();
@@ -98,6 +98,9 @@ bool MyGLWidget::readObj(const char *path) {
 			x = objects[i].mesh.texcoords[j];
 			y = objects[i].mesh.texcoords[j + 1];
 			vts << QVector2D(x, y);
+
+			verts[index++] = x;
+			verts[index++] = y;
 		}
 	}
 
@@ -116,7 +119,7 @@ bool MyGLWidget::readObj(const char *path) {
 	m_vertexBuf.destroy();
 	m_vertexBuf.create();
 	m_vertexBuf.bind();
-	m_vertexBuf.allocate(verts, sizeof(GLfloat)*mverts * 3);
+	m_vertexBuf.allocate(verts, sizeof(GLfloat)*mverts * 5);
 	m_vertexBuf.release();
 }
 
@@ -289,10 +292,11 @@ void MyGLWidget::drawTriangle() {
 	program.enableAttributeArray(mPositionHandle);
 	//program.setAttributeArray(mPositionHandle, vertices.constData());
 	program.setAttributeBuffer(mPositionHandle, GL_FLOAT, 0, 3);
-	m_vertexBuf.release();
 
 	program.enableAttributeArray(mTexcoordHandle);
-	program.setAttributeArray(mTexcoordHandle, vts.constData());
+	//program.setAttributeArray(mTexcoordHandle, vts.constData());
+	program.setAttributeBuffer(mTexcoordHandle, GL_FLOAT, sizeof(GLfloat)*mverts * 3, 2);
+	m_vertexBuf.release();
 
 	program.setUniformValue(mMMatrixHandle, mModelMatrix.transposed());
 	program.setUniformValue(mVMatrixHandle, mViewMatrix.transposed());
